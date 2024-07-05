@@ -3,7 +3,6 @@ import time
 from selenium import webdriver
 from urllib.request import urlopen, Request
 from bs4 import BeautifulSoup
-from datetime import datetime
 import requests
 import os
 import shutil
@@ -11,49 +10,76 @@ from pathlib import Path
 import subprocess
 import pyautogui as pg
 import finnhub
+from datetime import datetime
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+
+
+
+
+def url_collector(ticker_list, date_from, date_to):
+    header = ["Ticker", "Summary", "Time", "Sentiment"]
+    csvdata = []
+    finnhub_client = finnhub.Client(api_key="cpk7f99r01qs6dmbu0a0cpk7f99r01qs6dmbu0ag")
+    vader = SentimentIntensityAnalyzer()
+    for ticker in ticker_list:
+        datas = finnhub_client.company_news(ticker, _from=date_from, to=date_to)
+        for news in datas:
+
+            ts = int(news['datetime'])
+            summary_text = news['summary']
+            csvdata.append([ticker, str(summary_text), datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')[11:16], vader.polarity_scores(str(summary_text))])
+
+
+
+    data = pd.DataFrame(csvdata, columns=header)
+
+    print(data)
 
 
 def tradingview():
+    """time.sleep(2)
     pg.keyDown('ctrl')
     pg.hotkey('left')
-    pg.keyUp('ctr')
-    pg.click(x=40, y=173, clicks=1, interval=0, button='left')
+    pg.keyUp('ctrl')
+    pg.click(x=40, y=175, clicks=1, interval=0, button='left')
+    time.sleep(2)
     pg.click(x=33, y=343, clicks=2, interval=1, button='left')
+    time.sleep(5)
     downloads_path = str(Path.home() / "Downloads")
 
     # Get the path to the current directory where the script is located
-    current_directory = os.path.dirname(os.path.abspath(__file__))
+    current_directory = os.path.dirname(os.path.abspath(__file__))"""
 
     # Define the new name for the file
     new_file_name = 'tradingviewdata.csv'  # Change this to the desired new file name
 
     # Find the most recently downloaded file in the Downloads folder
-    recent_file = max([f for f in os.listdir(downloads_path) if os.path.isfile(os.path.join(downloads_path, f))], key=lambda x: os.path.getctime(os.path.join(downloads_path, x)))
+    """recent_file = max([f for f in os.listdir(downloads_path) if os.path.isfile(os.path.join(downloads_path, f))], key=lambda x: os.path.getctime(os.path.join(downloads_path, x)))
 
     # Construct full paths
     recent_file_path = os.path.join(downloads_path, recent_file)
     destination_file_path = os.path.join(current_directory, new_file_name)
 
     # Move and rename the file, replacing any existing file with the same name
-    shutil.move(recent_file_path, destination_file_path)
+    shutil.move(recent_file_path, destination_file_path)"""
 
     data = pd.read_csv(new_file_name)
 
     # Convert the necessary columns to numeric, handling errors for non-numeric entries
-    data['Float shares %'] = pd.to_numeric(data['Float shares %'], errors='coerce')
-    data['Volume 1 day'] = pd.to_numeric(data['Volume 1 day'], errors='coerce')
+    data['Float shares outstanding'] = pd.to_numeric(data['Float shares outstanding'], errors='coerce')
+    data['Relative Volume 1 day'] = pd.to_numeric(data['Relative Volume 1 day'], errors='coerce')
 
     # Calculate per minute values
     minutes_in_day = 24 * 60
-    data['Float shares %'] = data['Shares Float'] / minutes_in_day
-    data['Volume 1 day'] = data['Volume 1 day'] / minutes_in_day
+    data['Float shares outstanding'] = data['Float shares outstanding'] / minutes_in_day
+    data['Relative Volume 1 day'] = (data['Relative Volume 1 day']) * 1000000 / minutes_in_day
 
     # Filter the data where 'Relative Volume' is greater than 'Shares Float'
 
-    filtered_data = data[data['Volume 1 day'] > data['Float shares %']]
+    filtered_data = data[data['Relative Volume 1 day'] > data['Float shares outstanding']]
 
     # Return the filtered data with only relevant columns
-    return filtered_data[['Ticker', 'Company', 'Float shares %', 'Volume 1 day']]
+    return filtered_data[['Symbol', 'Description', 'Float shares outstanding', 'Relative Volume 1 day']]
 
 
 
@@ -95,7 +121,7 @@ def filter_stocks_pm(finviz_url):
     shutil.move(recent_file_path, destination_file_path)
 
     # Read the downloaded CSV file
-    data = pd.read_csv(destination_file_path)
+    data = pd.read_csv("data.csv")#destination_file_path)
 
     # Convert the necessary columns to numeric, handling errors for non-numeric entries
     data['Shares Float'] = pd.to_numeric(data['Shares Float'], errors='coerce')
@@ -103,7 +129,7 @@ def filter_stocks_pm(finviz_url):
 
     # Calculate per minute values
     minutes_in_day = 24 * 60
-    data['Shares Float per Minute'] = data['Shares Float'] / minutes_in_day
+    data['Shares Float per Minute'] = (data['Shares Float'] * 1000000) / minutes_in_day
     data['Volume per Minute'] = data['Volume'] / minutes_in_day
 
     # Filter the data where 'Volume per Minute' is greater than 'Shares Float per Minute'
@@ -133,10 +159,8 @@ def filterednews(table, released, start_time, end_time):
     parsed_data = []
     ticker_list = []
 
-
+    vader = SentimentIntensityAnalyzer()
     for ticker, news_table in table.items():
-        finviz_url = 'https://elite.finviz.com/quote.ashx?t=' + ticker
-
         if news_table != None:
             for row in news_table.findAll('tr'):
 
@@ -158,10 +182,23 @@ def filterednews(table, released, start_time, end_time):
 
 
                 if (row.a != None) and (released == date) and (temp_time >= start_time) and (temp_time <= end_time):
-
+                    news_url = row.a.get('href')
                     title = row.a.text
                     ticker_list.append(ticker)
-                    parsed_data.append([ticker, date, time, title, finviz_url])
+
+                    try:
+                        response = requests.get(news_url)
+                        response.raise_for_status()
+                        soup = BeautifulSoup(response.content, 'html.parser')
+
+                        article_text = ''
+                        for paragraph in soup.find_all('p'):
+                            article_text += paragraph.get_text()
+                    except requests.RequestException as e:
+                        print(f"Failed to fetch {url}: {e}")
+
+                    parsed_data.append([ticker, date, time, title, news_url, vader.polarity_scores(article_text)])
+
 
     return parsed_data, ticker_list
 
@@ -171,18 +208,20 @@ def convert24(time):
     # Format the datetime object into a 24-hour time string
     return t.strftime('%H:%M')
 
+
 def finhub_news(ticker_list, from_date, to_date):
     finnhub_client = finnhub.Client(api_key="cpk7f99r01qs6dmbu0a0cpk7f99r01qs6dmbu0ag")
-    news= []
+    news = []
     for ticker in ticker_list:
         news.append(finnhub_client.company_news(str(ticker), _from=str(from_date), to=str(to_date)))
+
 
 
 if __name__ == "__main__":
 
 
     # Usage:
-    """url = 'https://elite.finviz.com/screener.ashx?v=152&p=i1&f=cap_0.01to,geo_usa|china|france|europe|australia|belgium|canada|chinahongkong|germany|hongkong|iceland|japan|newzealand|ireland|netherlands|norway|singapore|southkorea|sweden|taiwan|unitedarabemirates|unitedkingdom|switzerland|spain,sh_curvol_o100,sh_price_u50,sh_relvol_o2,ta_change_u&ft=4&o=sharesfloat&ar=10&c=0,1,2,5,6,25,26,27,28,29,30,84,45,50,51,68,60,61,63,64,67,65,66'
+    url = 'https://elite.finviz.com/screener.ashx?v=151&p=i1&f=cap_0.01to,geo_usa|china|france|europe|australia|belgium|canada|chinahongkong|germany|hongkong|iceland|japan|newzealand|ireland|netherlands|norway|singapore|southkorea|sweden|taiwan|unitedarabemirates|unitedkingdom|switzerland|spain,sh_curvol_o100,sh_price_u50,sh_relvol_o2&ft=4&o=sharesfloat&ar=10'
     filtered_stocks = filter_stocks_pm(url)
 
     # Print the filtered DataFrame in a readable format
@@ -193,25 +232,22 @@ if __name__ == "__main__":
 
     news_tables = gathernews(tickers_list)
 
-    date = str(input("Please provide date for the news in format of 'mmm-dd-yy' ex. 'Jun-29-23'\n"))
-    start_time = str(input("Please provide start time for the news in format of 'hh:mmAM' ex. '04:30AM'\n"))
-    end_time = str(input("Please provide end time for the news in format of 'hh:mmAM' ex. '08:30AM'\n"))
+    date = "Today"  #str(input("Please provide date for the news in format of 'mmm-dd-yy' ex. 'Jun-29-23'\n"))
+    start_time = "04:00AM"#str(input("Please provide start time for the news in format of 'hh:mmAM' ex. '04:30AM'\n"))
+    end_time = "04:00PM"#str(input("Please provide end time for the news in format of 'hh:mmAM' ex. '08:30AM'\n"))
     finviz_news, filtered_ticker_list = filterednews(news_tables, date, start_time, end_time)
 
 
     print('Latest news of finviz:\n')
     for x in finviz_news:
         print(x)
-"""
 
-    from_date = str(input("Please provide from_date for the news in format of 'yyyy-mm-dd' ex. '2022-01-15'\n"))
-    to_date = str(input("Please provide to_date for the news in format of 'yyyy-mm-dd' ex. '2022-01-15'\n"))
+
+    from_date = "2024-07-01"
+    to_date = "2024-07-01"
     trading_view_filtered_tickers = tradingview()
-    trading_view_filtered_tickers = trading_view_filtered_tickers['Ticker'].tolist()
+    trading_view_filtered_tickers = trading_view_filtered_tickers['Symbol'].tolist()
     print(trading_view_filtered_tickers)
-    finnhub = finhub_news(trading_view_filtered_tickers, from_date, to_date)
+    finnhub = url_collector(trading_view_filtered_tickers, from_date, to_date)
 
-    print("News from finnhub: \n")
-    if finnhub is not None:
-        for x in finnhub:
-            print(x)
+    print(finnhub)
