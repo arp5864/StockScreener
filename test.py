@@ -147,42 +147,64 @@ def filterednews(stocks, released, start_time, end_time):
                     data.append([row['Date'],ticker, change, row['Title'], scores, row['Link']])
     return data
 
-def url_collector(ticker_list, date_from, date_to):
+def get_formatted_datetime(input_date, input_time):
+    temp = input_date.split('-')
+    final_date = "".join(temp)
+    temptime = convert24(input_time).split(':')
+    final_time = "".join(temptime)
+    return final_date + "T" + final_time
+
+
+def reverse_date_time(input):
+    date = input.split("T")[0]
+    time = input.split("T")[1]
+    date = date[0:4]+'-' + date[4:6] + '-' + date[6:]
+    time = time[0:2]+':'+time[2:4]
+    return date + " " + time
+
+
+def url_collector(ticker_list, date_time_from, date_time_to):
     print(ticker_list)
+
     csvdata = []
     for ticker in ticker_list:
-        datas = finnhub_client.company_news(ticker, _from=date_from, to=date_to)
+        url = f"https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={ticker}&time_from={date_time_from}&time_to={date_time_to}&apikey=0LK9EZK1SRR675B4"
+        r = requests.get(url)
+        data = r.json()
+        print(data)
+        datas = data['feed']
         for news in datas:
             news_url = news['url']
-            ts = int(news['datetime'])
-            news_time = datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')[11:19]
-            if news_time >= convert24(tradingview_time_from_entry.get()) and news_time <= convert24(tradingview_time_to_entry.get()):
-                summary_text = str(news['summary'])
-                article_text = ''
-                try:
-                    response = requests.get(news_url)
-                    response.raise_for_status()
-                    soup = BeautifulSoup(response.content, 'html.parser')
+            ts = news['time_published']
+            news_time = reverse_date_time(ts)
+
+            summary_text = str(news['summary'])
+            article_text = ''
+            try:
+                response = requests.get(news_url)
+                response.raise_for_status()
+                soup = BeautifulSoup(response.content, 'html.parser')
 
 
-                    for paragraph in soup.find_all('p'):
-                        article_text += paragraph.get_text()
-                except requests.RequestException as e:
+                for paragraph in soup.find_all('p'):
+                    article_text += paragraph.get_text()
 
-                    print(f"Failed to fetch {news_url}: {e}")
-                if article_text == '':
-                    scores = finvader(summary_text,
-                                      use_sentibignomics = True,
-                                      use_henry = True,
-                                      indicator = 'compound')
-                else:
-                    scores = finvader(article_text,
-                                      use_sentibignomics = True,
-                                      use_henry = True,
-                                      indicator = 'compound')
-                csvdata.append([datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S'), ticker, summary_text, scores, news_url])
+            except requests.RequestException as e:
+
+                print(f"Failed to fetch {news_url}: {e}")
+            if article_text == '':
+                scores = finvader(summary_text,
+                                  use_sentibignomics = True,
+                                  use_henry = True,
+                                  indicator = 'compound')
             else:
-                continue
+                scores = finvader(article_text,
+                                  use_sentibignomics = True,
+                                  use_henry = True,
+                                  indicator = 'compound')
+            csvdata.append([news_time, ticker, summary_text, scores, news_url])
+        else:
+            continue
 
     return csvdata
 
@@ -237,8 +259,12 @@ def fetch_tradingview_news():
 
     tickers_list = filtered_data['Symbol'].tolist()
     from_date = tradingview_date_from_entry.get()  # You can make this dynamic
-    to_date = tradingview_date_till_entry.get()  # You can make this dynamic
-    news_data = url_collector(tickers_list, from_date, to_date)
+    till_date = tradingview_date_till_entry.get()  # You can make this dynamic
+    from_time = tradingview_time_from_entry.get()
+    till_time = tradingview_time_till_entry.get()
+    date_time_from = get_formatted_datetime(from_date, from_time)
+    date_time_till = get_formatted_datetime(till_date, till_time)
+    news_data = url_collector(tickers_list, date_time_from, date_time_till)
     print(news_data)
     for row in tradingview_tree.get_children():
         tradingview_tree.delete(row)
@@ -360,8 +386,8 @@ tradingview_date_till_entry.place(x=210, y=60)
 
 tradingview_label = ttk.Label(tab2, text="Enter Time To(hh:mmAM):")
 tradingview_label.place(x=430, y=60)
-tradingview_time_to_entry = ttk.Entry(tab2, width=20)
-tradingview_time_to_entry.place(x=610, y=60)
+tradingview_time_till_entry = ttk.Entry(tab2, width=20)
+tradingview_time_till_entry.place(x=610, y=60)
 
 
 tradingview_button = ttk.Button(tab2, text="Get News", command=fetch_tradingview_news)
