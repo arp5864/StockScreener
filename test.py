@@ -12,16 +12,14 @@ from pathlib import Path
 import subprocess
 from datetime import datetime
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
-import finnhub
+
 from finvizfinance.quote import finvizfinance
 from finvader import finvader
 import webbrowser as wb
 
 
-# Initialize Finnhub client and VADER sentiment analyzer
-from pandas.core.interchange import column
 
-finnhub_client = finnhub.Client(api_key="cpk7f99r01qs6dmbu0a0cpk7f99r01qs6dmbu0ag")
+
 vader = SentimentIntensityAnalyzer()
 
 def open_link(event):
@@ -151,7 +149,7 @@ def get_formatted_datetime(input_date, input_time):
     temp = input_date.split('-')
     final_date = "".join(temp)
     temptime = convert24(input_time).split(':')
-    final_time = "".join(temptime)
+    final_time = "".join(temptime)[0:4]
     return final_date + "T" + final_time
 
 
@@ -163,15 +161,19 @@ def reverse_date_time(input):
     return date + " " + time
 
 
-def url_collector(ticker_list, date_time_from, date_time_to):
+def url_collector(filtered_data, date_time_from, date_time_to):
+    ticker_list = filtered_data['Symbol'].tolist()
     print(ticker_list)
 
     csvdata = []
     for ticker in ticker_list:
+
         url = f"https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={ticker}&time_from={date_time_from}&time_to={date_time_to}&apikey=0LK9EZK1SRR675B4"
+
         r = requests.get(url)
         data = r.json()
-        print(data)
+
+
         datas = data['feed']
         for news in datas:
             news_url = news['url']
@@ -202,7 +204,8 @@ def url_collector(ticker_list, date_time_from, date_time_to):
                                   use_sentibignomics = True,
                                   use_henry = True,
                                   indicator = 'compound')
-            csvdata.append([news_time, ticker, summary_text, scores, news_url])
+            change = filtered_data.loc[filtered_data["Symbol"] == ticker, "Change"].values[0]
+            csvdata.append([news_time, change, ticker, summary_text, scores, news_url])
         else:
             continue
 
@@ -257,14 +260,14 @@ def fetch_tradingview_news():
 
     filtered_data = data[data['Volume 1 day'] > data['Float shares outstanding']]
 
-    tickers_list = filtered_data['Symbol'].tolist()
+
     from_date = tradingview_date_from_entry.get()  # You can make this dynamic
     till_date = tradingview_date_till_entry.get()  # You can make this dynamic
     from_time = tradingview_time_from_entry.get()
     till_time = tradingview_time_till_entry.get()
     date_time_from = get_formatted_datetime(from_date, from_time)
     date_time_till = get_formatted_datetime(till_date, till_time)
-    news_data = url_collector(tickers_list, date_time_from, date_time_till)
+    news_data = url_collector(filtered_data, date_time_from, date_time_till)
     print(news_data)
     for row in tradingview_tree.get_children():
         tradingview_tree.delete(row)
@@ -393,14 +396,16 @@ tradingview_time_till_entry.place(x=610, y=60)
 tradingview_button = ttk.Button(tab2, text="Get News", command=fetch_tradingview_news)
 tradingview_button.place(x=650, y=100)
 
-tradingview_tree = ttk.Treeview(tab2, columns=("Date/Time","Ticker", "Title", "SScore", "Link"), show='headings', height = 500)
+tradingview_tree = ttk.Treeview(tab2, columns=("Date/Time","Change","Ticker", "Title", "SScore", "Link"), show='headings', height = 500)
 tradingview_tree.heading("Date/Time", text="Date/Time", command=lambda: sort_column(tradingview_tree, "Date/Time", False))
 tradingview_tree.heading("Ticker", text="Ticker", command=lambda: sort_column(tradingview_tree, "Ticker", False))
+tradingview_tree.heading("Change", text="Change", command=lambda: sort_column(tradingview_tree, "Change", False))
 tradingview_tree.heading("Title", text="Title", command=lambda: sort_column(tradingview_tree, "Title", False))
 tradingview_tree.heading("Link", text="Link", command=lambda: sort_column(tradingview_tree, "Link", False))
 tradingview_tree.heading("SScore", text="SScore", command=lambda: sort_column(tradingview_tree, "SScore", False))
 tradingview_tree.place(x=5, y=150)
 tradingview_tree.column("Ticker", width = 50)
+tradingview_tree.column("Change", width = 50)
 tradingview_tree.column("Date/Time", width = 150)
 tradingview_tree.column("Title", width = 500)
 tradingview_tree.column("SScore", width = 55)
