@@ -12,7 +12,7 @@ from pathlib import Path
 import subprocess
 from datetime import datetime
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
-
+import webbrowser
 from finvizfinance.quote import finvizfinance
 from finvader import finvader
 import webbrowser as wb
@@ -60,7 +60,7 @@ def filter_stocks_pm(finviz_url):
         subprocess.run(['osascript', '-e', applescript])
         time.sleep(5)  # Wait for 5 seconds to ensure the file is downloaded
     elif OS == "Windows":
-        subprocess.Popen(['chrome', export_url])
+        webbrowser.open(export_url)
         time.sleep(5)  # Wait for 5 seconds to ensure the file is downloaded
 
     # Define paths for downloads and current directory
@@ -113,6 +113,7 @@ def convert24(time_str):
     return t.strftime('%H:%M:%S')
 
 def filterednews(stocks, released, start_time, end_time):
+    print(stocks)
     # Convert the start and end times to 24-hour format
     start_time = convert24(start_time)
     end_time = convert24(end_time)
@@ -192,9 +193,12 @@ def url_collector(filtered_data, date_time_from, date_time_to):
     # Iterate through each ticker symbol
     for ticker in ticker_list:
         # Create the API URL for fetching news sentiment
-        url = f"https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={ticker}&time_from={date_time_from}&time_to={date_time_to}&apikey=0LK9EZK1SRR675B4"
+        url = f"https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={ticker}&time_from={date_time_from}&time_to={date_time_to}&apikey= B7HYV65ADQ4YCR7Q"
         r = requests.get(url)
         data = r.json()
+        print(data)
+        if len(data) == 1:
+            continue
         datas = data['feed']
 
         # Iterate through the news data
@@ -230,7 +234,7 @@ def url_collector(filtered_data, date_time_from, date_time_to):
                                   use_henry=True,
                                   indicator='compound')
 
-            change = filtered_data.loc[filtered_data["Symbol"] == ticker, "Change"].values[0]
+            change = filtered_data.loc[filtered_data["Symbol"] == ticker, "Price Change % 1 day"].values[0]
             csvdata.append([news_time, change, ticker, summary_text, scores, news_url])
         else:
             continue
