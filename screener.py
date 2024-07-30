@@ -113,7 +113,7 @@ def convert24(time_str):
     return t.strftime('%H:%M:%S')
 
 def filterednews(stocks, released, start_time, end_time):
-    print(stocks)
+    
     # Convert the start and end times to 24-hour format
     start_time = convert24(start_time)
     end_time = convert24(end_time)
