@@ -17,6 +17,7 @@ from finvizfinance.quote import finvizfinance
 from finvader import finvader
 import webbrowser as wb
 
+#Alpha Vantage API Key: https://www.alphavantage.co/support/#support
 api_key = "BZLSLFEGO6P7984S"
 
 # Initialize the Sentiment Intensity Analyzer from NLTK
