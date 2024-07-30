@@ -97,15 +97,15 @@ def filter_stocks_pm(finviz_url):
     data['Volume'] = pd.to_numeric(data['Volume'], errors='coerce')
 
     # Calculate 'Shares Float per Minute' and 'Volume per Minute'
-    minutes_in_day = 24 * 60
+    minutes_in_day = 12 * 60
     data['Shares Float per Minute'] = ((data['Shares Float'] * 1000000) / minutes_in_day) * time_difference
-    data['Volume per Minute'] = data['Volume'] / minutes_in_day
+
 
     # Filter data where 'Volume per Minute' is greater than 'Shares Float per Minute'
-    filtered_data = data[data['Volume per Minute'] > data['Shares Float per Minute']]
+    filtered_data = data[data['Volume'] > data['Shares Float per Minute']]
 
     # Return selected columns from the filtered data
-    return filtered_data[['Ticker', 'Company', 'Shares Float per Minute', 'Volume per Minute', 'Change']]
+    return filtered_data[['Ticker', 'Company', 'Shares Float per Minute', 'Volume', 'Change']]
 
 # Function to convert 12-hour time format to 24-hour time format
 def convert24(time_str):
@@ -113,7 +113,7 @@ def convert24(time_str):
     return t.strftime('%H:%M:%S')
 
 def filterednews(stocks, released, start_time, end_time):
-    
+    print(stocks)
     # Convert the start and end times to 24-hour format
     start_time = convert24(start_time)
     end_time = convert24(end_time)
@@ -235,6 +235,7 @@ def url_collector(filtered_data, date_time_from, date_time_to):
                                   indicator='compound')
 
             change = filtered_data.loc[filtered_data["Symbol"] == ticker, "Price Change % 1 day"].values[0]
+            change = round(change,2)
             csvdata.append([news_time, change, ticker, summary_text, scores, news_url])
         else:
             continue
@@ -288,7 +289,7 @@ def fetch_tradingview_news():
     data['Volume 1 minute'] = pd.to_numeric(data['Volume 1 minute'], errors='coerce')
 
     # Calculate per minute values
-    minutes_in_day = 24 * 60
+    minutes_in_day = 12 * 60
     data['Float shares outstanding'] = (data['Float shares outstanding'] / minutes_in_day) * time_difference
     data['Volume 1 minute'] = data['Volume 1 minute']
 
@@ -361,7 +362,7 @@ finviz_label = ttk.Label(tab1, text="Enter Date From(YYYY-MM-DD):")
 finviz_label.place(x=5, y=30)  # Position the label on the tab
 # Entry field for the start date
 finviz_date_from_entry = ttk.Entry(tab1, width=20)
-finviz_date_from_entry.insert(0, "2024-07-19")  # Set default date
+finviz_date_from_entry.insert(0, "2024-07-30")  # Set default date
 finviz_date_from_entry.place(x=210, y=30)  # Position the entry field on the tab
 
 # Label for entering the start time
@@ -376,7 +377,7 @@ finviz_label = ttk.Label(tab1, text="Enter Date Till(YYYY-MM-DD):")
 finviz_label.place(x=5, y=60)  # Position the label on the tab
 # Entry field for the end date
 finviz_date_till_entry = ttk.Entry(tab1, width=20)
-finviz_date_till_entry.insert(0, "2024-07-19")  # Set default date
+finviz_date_till_entry.insert(0, "2024-07-30")  # Set default date
 finviz_date_till_entry.place(x=210, y=60)  # Position the entry field on the tab
 
 # Label for entering the end time
@@ -428,7 +429,7 @@ tradingview_label = ttk.Label(tab2, text="Enter Date From(YYYY-MM-DD):")
 tradingview_label.place(x=5, y=30)  # Position the label on the tab
 # Entry field for the start date
 tradingview_date_from_entry = ttk.Entry(tab2, width=20)
-tradingview_date_from_entry.insert(0, "2024-07-19")  # Set default date
+tradingview_date_from_entry.insert(0, "2024-07-30")  # Set default date
 tradingview_date_from_entry.place(x=210, y=30)  # Position the entry field on the tab
 
 # Label for entering the start time for TradingView news
@@ -443,7 +444,7 @@ tradingview_label = ttk.Label(tab2, text="Enter Date Till(YYYY-MM-DD):")
 tradingview_label.place(x=5, y=60)  # Position the label on the tab
 # Entry field for the end date
 tradingview_date_till_entry = ttk.Entry(tab2, width=20)
-tradingview_date_till_entry.insert(0, "2024-07-19")  # Set default date
+tradingview_date_till_entry.insert(0, "2024-07-30")  # Set default date
 tradingview_date_till_entry.place(x=210, y=60)  # Position the entry field on the tab
 
 # Label for entering the end time for TradingView news
