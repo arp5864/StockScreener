@@ -17,6 +17,8 @@ from finvizfinance.quote import finvizfinance
 from finvader import finvader
 import webbrowser as wb
 
+api_key = "BZLSLFEGO6P7984S"
+
 # Initialize the Sentiment Intensity Analyzer from NLTK
 vader = SentimentIntensityAnalyzer()
 
@@ -193,7 +195,7 @@ def url_collector(filtered_data, date_time_from, date_time_to):
     # Iterate through each ticker symbol
     for ticker in ticker_list:
         # Create the API URL for fetching news sentiment
-        url = f"https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={ticker}&time_from={date_time_from}&time_to={date_time_to}&apikey= B7HYV65ADQ4YCR7Q"
+        url = f"https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={ticker}&time_from={date_time_from}&time_to={date_time_to}&apikey={api_key}"
         r = requests.get(url)
         data = r.json()
         print(data)
@@ -387,6 +389,7 @@ finviz_label.place(x=430, y=60)  # Position the label on the tab
 finviz_time_to_entry = ttk.Entry(tab1, width=20)
 finviz_time_to_entry.place(x=610, y=60)  # Position the entry field on the tab
 
+
 # Button to fetch Finviz news
 finviz_button = ttk.Button(tab1, text="Get News", command=fetch_finviz_news)
 finviz_button.place(x=650, y=100)  # Position the button on the tab
@@ -423,6 +426,7 @@ csv_file_entry.place(x=110, y=0)  # Position the entry field on the tab
 # Button to browse and select a CSV file
 select_csv_button = tk.Button(tab2, text="Browse", command=select_csv_file)
 select_csv_button.place(x=600, y=0)  # Position the button on the tab
+
 
 # Label for entering the start date for TradingView news
 tradingview_label = ttk.Label(tab2, text="Enter Date From(YYYY-MM-DD):")
