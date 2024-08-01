@@ -1,4 +1,5 @@
 import tkinter as tk
+from yahoo_fin import news
 from tkinter import ttk
 from tkinter import scrolledtext
 from tkinter import ttk, filedialog
@@ -16,9 +17,9 @@ import webbrowser
 from finvizfinance.quote import finvizfinance
 from finvader import finvader
 import webbrowser as wb
+import pytz
 
-#Alpha Vantage API Key: https://www.alphavantage.co/support/#support
-api_key = "BZLSLFEGO6P7984S"
+
 
 # Initialize the Sentiment Intensity Analyzer from NLTK
 vader = SentimentIntensityAnalyzer()
@@ -170,78 +171,89 @@ def filterednews(stocks, released, start_time, end_time):
 
     return data
 
-# Function to format date and time for API queries
-def get_formatted_datetime(input_date, input_time):
-    temp = input_date.split('-')
-    final_date = "".join(temp)  # Format date as YYYYMMDD
-    temptime = convert24(input_time).split(':')
-    final_time = "".join(temptime)[0:4]  # Format time as HHMM
-    return final_date + "T" + final_time
 
-# Function to reverse the formatted date and time to a readable format
-def reverse_date_time(input):
-    date = input.split("T")[0]
-    time = input.split("T")[1]
-    date = date[0:4] + '-' + date[4:6] + '-' + date[6:]  # Format date as YYYY-MM-DD
-    time = time[0:2] + ':' + time[2:4]  # Format time as HH:MM
-    return date + " " + time
+def is_within_range(input_date_time, date_from, date_to, time_from, time_to):
+
+    # Define time zones
+    utc = pytz.utc
+    est = pytz.timezone('US/Eastern')
+
+    # Parse the input date and time in UTC
+    input_dt = datetime.strptime(input_date_time, '%a, %d %b %Y %H:%M:%S %z')
+
+    # Convert input date and time to EST
+    input_dt_est = input_dt.astimezone(est)
+
+    # Parse the from and to date and time strings
+    datetime_from = datetime.strptime(f"{date_from} {time_from}", '%Y-%m-%d %I:%M%p')
+    datetime_to = datetime.strptime(f"{date_to} {time_to}", '%Y-%m-%d %I:%M%p')
+
+    # Localize the from and to datetime to EST
+    datetime_from_est = est.localize(datetime_from)
+    datetime_to_est = est.localize(datetime_to)
+
+    # Check if input date and time is within the range
+    return datetime_from_est <= input_dt_est <= datetime_to_est
+
 
 # Function to collect URLs of news articles within a specified time range
-def url_collector(filtered_data, date_time_from, date_time_to):
+def url_collector(filtered_data, date_from, date_to, time_from, time_to):
     ticker_list = filtered_data['Symbol'].tolist()  # Convert the symbol column to a list
     print(ticker_list)
 
     csvdata = []
 
-    # Iterate through each ticker symbol
     for ticker in ticker_list:
-        # Create the API URL for fetching news sentiment
-        url = f"https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={ticker}&time_from={date_time_from}&time_to={date_time_to}&apikey={api_key}"
-        r = requests.get(url)
-        data = r.json()
-        print(data)
-        if len(data) == 1:
-            continue
-        datas = data['feed']
+        try:
+            news_data = news.get_yf_rss(ticker)
+            for article in news_data:
+                if is_within_range(article["published"], date_from, date_to, time_from, time_to) == True:
+                    utc = pytz.utc
+                    est = pytz.timezone('US/Eastern')
 
-        # Iterate through the news data
-        for news in datas:
-            news_url = news['url']  # Get the news URL
-            ts = news['time_published']
-            news_time = reverse_date_time(ts)  # Convert the published time to a readable format
+                    # Parse the input date and time in UTC
+                    input_dt = datetime.strptime(article["published"], '%a, %d %b %Y %H:%M:%S %z')
 
-            summary_text = str(news['summary'])
-            article_text = ''
+                    # Convert input date and time to EST
+                    input_dt_est = str(input_dt.astimezone(est))
+                    input_dt_est = input_dt_est[:19]
+                    news_url = article["link"]
+                    summary_text = str(article["summary"])
+                    article_text = ''
 
-            # Fetch the news article
-            try:
-                response = requests.get(news_url)
-                response.raise_for_status()
-                soup = BeautifulSoup(response.content, 'html.parser')
+                    # Fetch the news article
+                    try:
+                        response = requests.get(news_url)
+                        response.raise_for_status()
+                        soup = BeautifulSoup(response.content, 'html.parser')
 
-                # Extract text from paragraphs
-                for paragraph in soup.find_all('p'):
-                    article_text += paragraph.get_text()
-            except requests.RequestException as e:
-                print(f"Failed to fetch {news_url}: {e}")
+                        # Extract text from paragraphs
+                        for paragraph in soup.find_all('p'):
+                            article_text += paragraph.get_text()
+                    except requests.RequestException as e:
+                        print(f"Failed to fetch {news_url}: {e}")
 
-            # Perform sentiment analysis on the article text or summary
-            if article_text == '':
-                scores = finvader(summary_text,
-                                  use_sentibignomics=True,
-                                  use_henry=True,
-                                  indicator='compound')
-            else:
-                scores = finvader(article_text,
-                                  use_sentibignomics=True,
-                                  use_henry=True,
-                                  indicator='compound')
+                    # Perform sentiment analysis on the article text or summary
+                    if article_text == '':
+                        scores = finvader(summary_text,
+                                          use_sentibignomics=True,
+                                          use_henry=True,
+                                          indicator='compound')
+                    else:
+                        scores = finvader(article_text,
+                                          use_sentibignomics=True,
+                                          use_henry=True,
+                                          indicator='compound')
 
-            change = filtered_data.loc[filtered_data["Symbol"] == ticker, "Price Change % 1 day"].values[0]
-            change = round(change,2)
-            csvdata.append([news_time, change, ticker, summary_text, scores, news_url])
-        else:
-            continue
+                    change = filtered_data.loc[filtered_data["Symbol"] == ticker, "Price Change % 1 day"].values[0]
+                    change = round(change,2)
+                    csvdata.append([input_dt_est,change,ticker,article["title"],scores,article["link"]])
+
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
+    # Iterate through each ticker symbol
 
     return csvdata
 
@@ -306,11 +318,9 @@ def fetch_tradingview_news():
     till_time = tradingview_time_till_entry.get()
 
     # Format the date and time for the API query
-    date_time_from = get_formatted_datetime(from_date, from_time)
-    date_time_till = get_formatted_datetime(till_date, till_time)
 
     # Collect news URLs within the specified time range
-    news_data = url_collector(filtered_data, date_time_from, date_time_till)
+    news_data = url_collector(filtered_data, from_date, till_date, from_time, till_time)
     print(news_data)
 
     # Clear the existing rows in the TradingView treeview
