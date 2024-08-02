@@ -116,7 +116,7 @@ def convert24(time_str):
     t = datetime.strptime(time_str, '%I:%M%p')
     return t.strftime('%H:%M:%S')
 
-def filterednews(stocks, released, start_time, end_time):
+def filterednews(stocks, date_from, date_to, start_time, end_time):
     print(stocks)
     # Convert the start and end times to 24-hour format
     start_time = convert24(start_time)
@@ -135,7 +135,7 @@ def filterednews(stocks, released, start_time, end_time):
             date_time_list = str(row['Date']).split(' ')  # Split the date and time
 
             # Check if the news release date matches the given date
-            if date_time_list[0] != released:
+            if (date_time_list[0] >= date_from and date_time_list[0] <= date_to) == False:
                 break
             else:
                 # Check if the news release time is within the start and end time range
@@ -167,7 +167,7 @@ def filterednews(stocks, released, start_time, end_time):
                         change = "0" + change
 
                     # Append the news data to the result list
-                    data.append([row['Date'], ticker, change, row['Title'], scores, row['Link']])
+                    data.append([row['Date'], change, ticker, row['Title'], scores, row['Link']])
 
     return data
 
@@ -253,6 +253,55 @@ def url_collector(filtered_data, date_from, date_to, time_from, time_to):
         except Exception as e:
             print(f"An error occurred: {e}")
 
+
+    start_time = convert24(time_from)
+    end_time = convert24(time_to)
+
+
+
+    # Iterate through each ticker symbol
+    for ticker in ticker_list:
+        stock = finvizfinance(ticker)  # Get the stock information
+        news_df = stock.ticker_news()  # Get the news for the stock
+
+        # Iterate through the news data
+        for index, row in news_df.iterrows():
+            date_time_list = str(row['Date']).split(' ')  # Split the date and time
+
+            # Check if the news release date matches the given date
+            if (date_time_list[0] >= date_from and date_time_list[0] <= date_to) == False:
+                break
+            else:
+                # Check if the news release time is within the start and end time range
+                if date_time_list[1] >= start_time and date_time_list[1] <= end_time:
+                    news_url = row['Link']  # Get the news link
+                    article_text = ''
+
+                    # Fetch the news article
+                    try:
+                        response = requests.get(news_url)
+                        response.raise_for_status()
+                        soup = BeautifulSoup(response.content, 'html.parser')
+
+                        # Extract text from paragraphs
+                        for paragraph in soup.find_all('p'):
+                            article_text += paragraph.get_text()
+                    except requests.RequestException as e:
+                        print(f"Failed to fetch {news_url}: {e}")
+
+                    # Perform sentiment analysis on the article text
+                    scores = finvader(article_text,
+                                      use_sentibignomics=True,
+                                      use_henry=True,
+                                      indicator='compound')
+                    change = filtered_data.loc[filtered_data["Symbol"] == ticker, "Price Change % 1 day"].values[0]
+                    change = round(change,2)
+
+                    # Ensure change has a consistent length
+
+
+                    # Append the news data to the result list
+                    csvdata.append([row['Date'], change, ticker, row['Title'], scores, row['Link']])
     # Iterate through each ticker symbol
 
     return csvdata
@@ -264,10 +313,11 @@ def fetch_finviz_news():
     url = finviz_entry.get()  # Get the URL from the Finviz entry field
     filtered_stocks = filter_stocks_pm(url)  # Filter stocks based on the URL
 
-    date = finviz_date_from_entry.get()  # Get the date from the entry field
+    date_from = finviz_date_from_entry.get() # Get the date from the entry field
+    date_to = finviz_date_till_entry.get()
     start_time = finviz_time_from_entry.get()  # Get the start time from the entry field
     end_time = finviz_time_to_entry.get()  # Get the end time from the entry field
-    finviz_news = filterednews(filtered_stocks, date, start_time, end_time)  # Fetch filtered news
+    finviz_news = filterednews(filtered_stocks, date_from, date_to, start_time, end_time)  # Fetch filtered news
 
     # Clear the existing rows in the Finviz treeview
     for row in finviz_tree.get_children():
@@ -406,7 +456,7 @@ finviz_button = ttk.Button(tab1, text="Get News", command=fetch_finviz_news)
 finviz_button.place(x=650, y=100)  # Position the button on the tab
 
 # Treeview for displaying Finviz news
-finviz_tree = ttk.Treeview(tab1, columns=("Date/Time", "Ticker", "Change", "Title", "SScore", "Link"), show='headings', height=500)
+finviz_tree = ttk.Treeview(tab1, columns=("Date/Time", "Change", "Ticker", "Title", "SScore", "Link"), show='headings', height=500)
 # Define column headings and sorting commands
 finviz_tree.heading("Date/Time", text="Date/Time", command=lambda: sort_column(finviz_tree, "Date/Time", False))
 finviz_tree.heading("Ticker", text="Ticker", command=lambda: sort_column(finviz_tree, "Ticker", False))
