@@ -303,7 +303,7 @@ def url_collector(filtered_data, date_from, date_to, time_from, time_to):
 
                         # Append the news data to the result list
                         csvdata.append([row['Date'], change, ticker, row['Title'], scores, row['Link']])
-                        
+
         except Exception as e:
             print(f"An error occurred: {e}")
     # Iterate through each ticker symbol
@@ -429,7 +429,7 @@ finviz_label = ttk.Label(tab1, text="Enter Date From(YYYY-MM-DD):")
 finviz_label.place(x=5, y=30)  # Position the label on the tab
 # Entry field for the start date
 finviz_date_from_entry = ttk.Entry(tab1, width=20)
-finviz_date_from_entry.insert(0, "2024-07-30")  # Set default date
+finviz_date_from_entry.insert(0, "2024-08-02")  # Set default date
 finviz_date_from_entry.place(x=210, y=30)  # Position the entry field on the tab
 
 # Label for entering the start time
@@ -444,7 +444,7 @@ finviz_label = ttk.Label(tab1, text="Enter Date Till(YYYY-MM-DD):")
 finviz_label.place(x=5, y=60)  # Position the label on the tab
 # Entry field for the end date
 finviz_date_till_entry = ttk.Entry(tab1, width=20)
-finviz_date_till_entry.insert(0, "2024-07-30")  # Set default date
+finviz_date_till_entry.insert(0, "2024-08-02")  # Set default date
 finviz_date_till_entry.place(x=210, y=60)  # Position the entry field on the tab
 
 # Label for entering the end time
@@ -498,7 +498,7 @@ tradingview_label = ttk.Label(tab2, text="Enter Date From(YYYY-MM-DD):")
 tradingview_label.place(x=5, y=30)  # Position the label on the tab
 # Entry field for the start date
 tradingview_date_from_entry = ttk.Entry(tab2, width=20)
-tradingview_date_from_entry.insert(0, "2024-07-30")  # Set default date
+tradingview_date_from_entry.insert(0, "2024-08-02")  # Set default date
 tradingview_date_from_entry.place(x=210, y=30)  # Position the entry field on the tab
 
 # Label for entering the start time for TradingView news
@@ -513,7 +513,7 @@ tradingview_label = ttk.Label(tab2, text="Enter Date Till(YYYY-MM-DD):")
 tradingview_label.place(x=5, y=60)  # Position the label on the tab
 # Entry field for the end date
 tradingview_date_till_entry = ttk.Entry(tab2, width=20)
-tradingview_date_till_entry.insert(0, "2024-07-30")  # Set default date
+tradingview_date_till_entry.insert(0, "2024-08-02")  # Set default date
 tradingview_date_till_entry.place(x=210, y=60)  # Position the entry field on the tab
 
 # Label for entering the end time for TradingView news
