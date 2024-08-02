@@ -261,47 +261,51 @@ def url_collector(filtered_data, date_from, date_to, time_from, time_to):
 
     # Iterate through each ticker symbol
     for ticker in ticker_list:
-        stock = finvizfinance(ticker)  # Get the stock information
-        news_df = stock.ticker_news()  # Get the news for the stock
+        try:
+            stock = finvizfinance(ticker)  # Get the stock information
+            news_df = stock.ticker_news()  # Get the news for the stock
 
-        # Iterate through the news data
-        for index, row in news_df.iterrows():
-            date_time_list = str(row['Date']).split(' ')  # Split the date and time
+            # Iterate through the news data
+            for index, row in news_df.iterrows():
+                date_time_list = str(row['Date']).split(' ')  # Split the date and time
 
-            # Check if the news release date matches the given date
-            if (date_time_list[0] >= date_from and date_time_list[0] <= date_to) == False:
-                break
-            else:
-                # Check if the news release time is within the start and end time range
-                if date_time_list[1] >= start_time and date_time_list[1] <= end_time:
-                    news_url = row['Link']  # Get the news link
-                    article_text = ''
+                # Check if the news release date matches the given date
+                if (date_time_list[0] >= date_from and date_time_list[0] <= date_to) == False:
+                    break
+                else:
+                    # Check if the news release time is within the start and end time range
+                    if date_time_list[1] >= start_time and date_time_list[1] <= end_time:
+                        news_url = row['Link']  # Get the news link
+                        article_text = ''
 
-                    # Fetch the news article
-                    try:
-                        response = requests.get(news_url)
-                        response.raise_for_status()
-                        soup = BeautifulSoup(response.content, 'html.parser')
+                        # Fetch the news article
+                        try:
+                            response = requests.get(news_url)
+                            response.raise_for_status()
+                            soup = BeautifulSoup(response.content, 'html.parser')
 
-                        # Extract text from paragraphs
-                        for paragraph in soup.find_all('p'):
-                            article_text += paragraph.get_text()
-                    except requests.RequestException as e:
-                        print(f"Failed to fetch {news_url}: {e}")
+                            # Extract text from paragraphs
+                            for paragraph in soup.find_all('p'):
+                                article_text += paragraph.get_text()
+                        except requests.RequestException as e:
+                            print(f"Failed to fetch {news_url}: {e}")
 
-                    # Perform sentiment analysis on the article text
-                    scores = finvader(article_text,
-                                      use_sentibignomics=True,
-                                      use_henry=True,
-                                      indicator='compound')
-                    change = filtered_data.loc[filtered_data["Symbol"] == ticker, "Price Change % 1 day"].values[0]
-                    change = round(change,2)
+                        # Perform sentiment analysis on the article text
+                        scores = finvader(article_text,
+                                          use_sentibignomics=True,
+                                          use_henry=True,
+                                          indicator='compound')
+                        change = filtered_data.loc[filtered_data["Symbol"] == ticker, "Price Change % 1 day"].values[0]
+                        change = round(change,2)
 
-                    # Ensure change has a consistent length
+                        # Ensure change has a consistent length
 
 
-                    # Append the news data to the result list
-                    csvdata.append([row['Date'], change, ticker, row['Title'], scores, row['Link']])
+                        # Append the news data to the result list
+                        csvdata.append([row['Date'], change, ticker, row['Title'], scores, row['Link']])
+                        
+        except Exception as e:
+            print(f"An error occurred: {e}")
     # Iterate through each ticker symbol
 
     return csvdata
