@@ -109,7 +109,7 @@ def filter_stocks_pm(finviz_url):
     filtered_data = data[data['Volume'] > data['Shares Float per Minute']]
 
     # Return selected columns from the filtered data
-    return filtered_data[['Ticker', 'Company', 'Shares Float per Minute', 'Volume', 'Change']]
+    return filtered_data[['Ticker', 'Shares Float per Minute', 'Volume', 'Change']]
 
 # Function to convert 12-hour time format to 24-hour time format
 def convert24(time_str):
@@ -119,8 +119,6 @@ def convert24(time_str):
 def filterednews(stocks, date_from, date_to, start_time, end_time):
     print(stocks)
     # Convert the start and end times to 24-hour format
-    start_time = convert24(start_time)
-    end_time = convert24(end_time)
 
     ticker_list = stocks['Ticker'].tolist()  # Convert the ticker column to a list
     data = []
@@ -132,47 +130,43 @@ def filterednews(stocks, date_from, date_to, start_time, end_time):
 
         # Iterate through the news data
         for index, row in news_df.iterrows():
-            date_time_list = str(row['Date']).split(' ')  # Split the date and time
+            date_time = str(row['Date'])  # Split the date and time
 
-            # Check if the news release date matches the given date
-            if (date_time_list[0] >= date_from and date_time_list[0] <= date_to) == False:
-                break
-            else:
-                # Check if the news release time is within the start and end time range
-                if date_time_list[1] >= start_time and date_time_list[1] <= end_time:
-                    news_url = row['Link']  # Get the news link
-                    article_text = ''
+            # Check if the news release time is within the start and end time range
+            if is_within_range_finvizfinance(date_time, date_from, date_to, start_time, end_time) == True:
+                news_url = row['Link']  # Get the news link
+                article_text = ''
 
-                    # Fetch the news article
-                    try:
-                        response = requests.get(news_url)
-                        response.raise_for_status()
-                        soup = BeautifulSoup(response.content, 'html.parser')
+                # Fetch the news article
+                try:
+                    response = requests.get(news_url)
+                    response.raise_for_status()
+                    soup = BeautifulSoup(response.content, 'html.parser')
 
-                        # Extract text from paragraphs
-                        for paragraph in soup.find_all('p'):
-                            article_text += paragraph.get_text()
-                    except requests.RequestException as e:
-                        print(f"Failed to fetch {news_url}: {e}")
+                    # Extract text from paragraphs
+                    for paragraph in soup.find_all('p'):
+                        article_text += paragraph.get_text()
+                except requests.RequestException as e:
+                    print(f"Failed to fetch {news_url}: {e}")
 
-                    # Perform sentiment analysis on the article text
-                    scores = finvader(article_text,
-                                      use_sentibignomics=True,
-                                      use_henry=True,
-                                      indicator='compound')
-                    change = stocks.loc[stocks["Ticker"] == ticker, "Change"].values[0]
+                # Perform sentiment analysis on the article text
+                scores = finvader(article_text,
+                                  use_sentibignomics=True,
+                                  use_henry=True,
+                                  indicator='compound')
+                change = stocks.loc[stocks["Ticker"] == ticker, "Change"].values[0]
 
-                    # Ensure change has a consistent length
-                    if len(change) == 5:
-                        change = "0" + change
+                # Ensure change has a consistent length
+                if len(change) == 5:
+                    change = "0" + change
 
-                    # Append the news data to the result list
-                    data.append([row['Date'], change, ticker, row['Title'], scores, row['Link']])
+                # Append the news data to the result list
+                data.append([row['Date'], change, ticker, row['Title'], scores, row['Link']])
 
     return data
 
 
-def is_within_range(input_date_time, date_from, date_to, time_from, time_to):
+def is_within_range_yahoo_rss(input_date_time, date_from, date_to, time_from, time_to):
 
     # Define time zones
     utc = pytz.utc
@@ -195,6 +189,19 @@ def is_within_range(input_date_time, date_from, date_to, time_from, time_to):
     # Check if input date and time is within the range
     return datetime_from_est <= input_dt_est <= datetime_to_est
 
+def is_within_range_finvizfinance(datetime_to_check, date_from, date_to, time_from, time_to):
+    # Combine date and time inputs to create complete datetime objects
+    datetime_from_str = f"{date_from} {time_from}"
+    datetime_to_str = f"{date_to} {time_to}"
+
+    # Parse the datetime strings into datetime objects
+    datetime_from = datetime.strptime(datetime_from_str, '%Y-%m-%d %I:%M%p')
+    datetime_to = datetime.strptime(datetime_to_str, '%Y-%m-%d %I:%M%p')
+    datetime_check = datetime.strptime(datetime_to_check, '%Y-%m-%d %H:%M:%S')
+
+    # Check if datetime_to_check is within the range
+    return datetime_from <= datetime_check <= datetime_to
+
 
 # Function to collect URLs of news articles within a specified time range
 def url_collector(filtered_data, date_from, date_to, time_from, time_to):
@@ -207,7 +214,7 @@ def url_collector(filtered_data, date_from, date_to, time_from, time_to):
         try:
             news_data = news.get_yf_rss(ticker)
             for article in news_data:
-                if is_within_range(article["published"], date_from, date_to, time_from, time_to) == True:
+                if is_within_range_yahoo_rss(article["published"], date_from, date_to, time_from, time_to) == True:
                     utc = pytz.utc
                     est = pytz.timezone('US/Eastern')
 
@@ -254,9 +261,6 @@ def url_collector(filtered_data, date_from, date_to, time_from, time_to):
             print(f"An error occurred: {e}")
 
 
-    start_time = convert24(time_from)
-    end_time = convert24(time_to)
-
 
 
     # Iterate through each ticker symbol
@@ -267,42 +271,41 @@ def url_collector(filtered_data, date_from, date_to, time_from, time_to):
 
             # Iterate through the news data
             for index, row in news_df.iterrows():
-                date_time_list = str(row['Date']).split(' ')  # Split the date and time
+                date_time = str(row['Date']) # Split the date and time
 
                 # Check if the news release date matches the given date
-                if (date_time_list[0] >= date_from and date_time_list[0] <= date_to) == False:
-                    break
-                else:
+                if is_within_range_finvizfinance(date_time, date_from, date_to, time_from, time_to) == True:
+
                     # Check if the news release time is within the start and end time range
-                    if date_time_list[1] >= start_time and date_time_list[1] <= end_time:
-                        news_url = row['Link']  # Get the news link
-                        article_text = ''
 
-                        # Fetch the news article
-                        try:
-                            response = requests.get(news_url)
-                            response.raise_for_status()
-                            soup = BeautifulSoup(response.content, 'html.parser')
+                    news_url = row['Link']  # Get the news link
+                    article_text = ''
 
-                            # Extract text from paragraphs
-                            for paragraph in soup.find_all('p'):
-                                article_text += paragraph.get_text()
-                        except requests.RequestException as e:
-                            print(f"Failed to fetch {news_url}: {e}")
+                    # Fetch the news article
+                    try:
+                        response = requests.get(news_url)
+                        response.raise_for_status()
+                        soup = BeautifulSoup(response.content, 'html.parser')
 
-                        # Perform sentiment analysis on the article text
-                        scores = finvader(article_text,
-                                          use_sentibignomics=True,
-                                          use_henry=True,
-                                          indicator='compound')
-                        change = filtered_data.loc[filtered_data["Symbol"] == ticker, "Price Change % 1 day"].values[0]
-                        change = round(change,2)
+                        # Extract text from paragraphs
+                        for paragraph in soup.find_all('p'):
+                            article_text += paragraph.get_text()
+                    except requests.RequestException as e:
+                        print(f"Failed to fetch {news_url}: {e}")
 
-                        # Ensure change has a consistent length
+                    # Perform sentiment analysis on the article text
+                    scores = finvader(article_text,
+                                      use_sentibignomics=True,
+                                      use_henry=True,
+                                      indicator='compound')
+                    change = filtered_data.loc[filtered_data["Symbol"] == ticker, "Price Change % 1 day"].values[0]
+                    change = round(change,2)
+
+                    # Ensure change has a consistent length
 
 
-                        # Append the news data to the result list
-                        csvdata.append([row['Date'], change, ticker, row['Title'], scores, row['Link']])
+                    # Append the news data to the result list
+                    csvdata.append([row['Date'], change, ticker, row['Title'], scores, row['Link']])
 
         except Exception as e:
             print(f"An error occurred: {e}")
