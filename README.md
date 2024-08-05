@@ -45,11 +45,6 @@ This project provides a comprehensive dashboard to fetch and display stock news 
     ```sh
     pip install -r requirements.txt
     ```
-4. Download NLTK VADER lexicon:
-    ```python
-    import nltk
-    nltk.download('vader_lexicon')
-    ```
 
 ## Usage
 
