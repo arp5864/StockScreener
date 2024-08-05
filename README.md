@@ -7,7 +7,7 @@ This project provides a comprehensive dashboard to fetch and display stock news 
 - **Fetch and Filter Stock Data from Finviz**: Input a Finviz URL to fetch and filter stock data.
 - **Fetch News Articles**: Retrieve news articles based on selected stocks and display them in the GUI.
 - **TradingView CSV Integration**: Import stock data from TradingView using a CSV file and apply filters.
-- **Sentiment Analysis**: Analyze the sentiment of fetched news articles using NLTK's VADER lexicon.
+- **Sentiment Analysis**: Analyze the sentiment of fetched news articles using Fin VADER lexicon.
 - **User-Friendly GUI**: Display news articles with clickable links in a Tkinter-based GUI.
 
 ## Requirements
@@ -21,7 +21,15 @@ This project provides a comprehensive dashboard to fetch and display stock news 
   - `nltk`
   - `finvizfinance`
   - `finvader`
-  - `alphavantage` (API key required) - https://www.alphavantage.co/support/#api-key
+  - `yahoo_fin`
+  - `time`
+  - `os`
+  - `pathlib`
+  - `subprocess`
+  - `datetime`
+  - `webbrowser`
+  - `pytz`
+ 
 
 ## Installation
 
