@@ -1,19 +1,19 @@
 # Stock News Dashboard
 
-This project provides a dashboard to fetch and display stock news from Finviz and TradingView using a graphical user interface (GUI) built with Tkinter. It includes features for filtering stocks, sentiment analysis, and displaying news articles in a user-friendly manner.
+This project provides a comprehensive dashboard to fetch and display stock news from Finviz and TradingView using a graphical user interface (GUI) built with Tkinter. It includes features for filtering stocks, performing sentiment analysis, and displaying news articles in a user-friendly manner.
 
 ## Features
 
-- Fetch and filter stock data from Finviz.
-- Fetch news articles based on selected stocks and display them.
-- Fetch and filter stock data from TradingView using a CSV file.
-- Perform sentiment analysis on fetched news articles.
-- Display news articles with clickable links in a GUI.
+- **Fetch and Filter Stock Data from Finviz**: Input a Finviz URL to fetch and filter stock data.
+- **Fetch News Articles**: Retrieve news articles based on selected stocks and display them in the GUI.
+- **TradingView CSV Integration**: Import stock data from TradingView using a CSV file and apply filters.
+- **Sentiment Analysis**: Analyze the sentiment of fetched news articles using NLTK's VADER lexicon.
+- **User-Friendly GUI**: Display news articles with clickable links in a Tkinter-based GUI.
 
 ## Requirements
 
 - Python 3.x
-- Required libraries: 
+- Required libraries:
   - `tkinter`
   - `pandas`
   - `bs4`
@@ -21,7 +21,7 @@ This project provides a dashboard to fetch and display stock news from Finviz an
   - `nltk`
   - `finvizfinance`
   - `finvader`
-  - `alphavantage` (API key required) - https://www.alphavantage.co/support/#api-key 
+  - `alphavantage` (API key required) - https://www.alphavantage.co/support/#api-key
 
 ## Installation
 
@@ -47,7 +47,7 @@ This project provides a dashboard to fetch and display stock news from Finviz an
 
 1. Run the main script:
     ```sh
-    python main.py
+    python screener.py
     ```
 2. The application window will appear with two tabs: `Finviz` and `TradingView`.
 
@@ -67,9 +67,17 @@ This project provides a dashboard to fetch and display stock news from Finviz an
 ## Code Structure
 
 - `main.py`: The main script that initializes the Tkinter GUI and contains all functions for fetching and displaying news.
+- `screener.py`: Contains functions for filtering stocks and performing sentiment analysis.
 - `requirements.txt`: List of required Python libraries.
 
-### Key Functions
+## CSV and URL Files
+
+- `trvscreener.csv`: Sample CSV file to test TradingView function.
+- `finviz_screener_url`: Link of Finviz screener for testing Finviz function.
+
+## Detailed Code Overview
+
+### Key Functions in `main.py`
 
 - `open_link(event)`: Opens a link in a new browser tab when a cell in a specific column is clicked.
 - `sort_column(tree, col, reverse)`: Sorts a treeview column in ascending or descending order.
@@ -80,7 +88,7 @@ This project provides a dashboard to fetch and display stock news from Finviz an
 - `reverse_date_time(input)`: Reverses the formatted date and time to a readable format.
 - `url_collector(filtered_data, date_time_from, date_time_to)`: Collects URLs of news articles within a specified time range.
 
-### GUI Functions
+### GUI Functions in `main.py`
 
 - `fetch_finviz_news()`: Fetches news from Finviz and displays it in the GUI.
 - `select_csv_file()`: Opens a file dialog to select a CSV file and sets its path.
@@ -92,3 +100,11 @@ This project provides a dashboard to fetch and display stock news from Finviz an
 - Ensure that the selected CSV file for TradingView contains the necessary columns.
 - If no news articles are fetched, check the date and time range.
 - It is highly likely that no stock tickers go through our first filter which is based on volume per minute compared to shares float per minute.
+
+## Contact
+
+For any issues or questions, please contact trp5268@psu.edu or arp5864@psu.edu
+
+---
+
+**Note:** This project is for educational purposes only and should not be used for actual stock trading decisions.
